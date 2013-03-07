@@ -1,0 +1,7 @@
+venv
+*.pyc
+*.crt
+*.csr
+*.key
+*.key.org
+config.json

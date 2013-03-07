@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -e
+#set -x
+
+
+patterns="*.py;*.ini"
+ignore_patterns=--ignore-patterns\ "venv"
+
+watchmedo auto-restart \
+	--recursive \
+	--patterns $patterns \
+	--directory . \
+	$ignore_patterns \
+	python run.py

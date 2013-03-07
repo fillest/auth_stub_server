@@ -1,0 +1,8 @@
+PyYAML==3.10
+argcomplete==0.3.7
+argh==0.23.0
+argparse==1.2.1
+gevent==0.13.8
+greenlet==0.4.0
+pathtools==0.1.2
+watchdog==0.6.0
