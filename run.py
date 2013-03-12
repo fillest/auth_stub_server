@@ -13,19 +13,24 @@ import pprint
 import json
 import random
 import string
+import itertools
 
 
 log = logging.getLogger(__name__)
 
+
+FB_DATA =  string.Template("""
+	{"id":"$id","name":"Ivanov$id Ivan$id","first_name":"Ivanov$id","last_name":"Ivan$id","link":"http:\/\/www.facebook.com\/ivan$id","username":"ivan$id","work":[{"employer":{"id":"1","name":"test"},"start_date":"0000-00"},{"employer":{"id":"2","name":"test1"},"start_date":"0000-00","end_date":"0000-00"}],"gender":"male","email":"ivan$id\u0040example.com","timezone":4,"locale":"en_US","verified":true,"updated_time":"2012-11-22T14:57:50+0000"}
+""".strip())
 
 def handle (env, start_response):
 	if env['PATH_INFO'].startswith('/oauth/access_token'):
 		body = "access_token=%s&expires=5103468" % ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(112))
 		start_response('200 OK', [('Content-Type', 'text/html')])
 	elif env['PATH_INFO'].startswith('/me'):
-		body = """
-			{"id":"1035131973","name":"Saveliev Philipp","first_name":"Saveliev","last_name":"Philipp","link":"http:\/\/www.facebook.com\/saveliev.philipp","username":"saveliev.philipp","work":[{"employer":{"id":"143715165648081","name":"undev.ru"},"start_date":"0000-00"},{"employer":{"id":"100961113279038","name":"Rambler"},"start_date":"0000-00","end_date":"0000-00"}],"gender":"male","email":"fsfeel\u0040gmail.com","timezone":4,"locale":"en_US","verified":true,"updated_time":"2012-11-22T14:57:50+0000"}
-		""".strip()
+		uid = env['id_gen'].next()
+
+		body = FB_DATA.substitute(id = uid)
 		start_response('200 OK', [('Content-Type', 'text/html')])
 	else:
 		log.debug(pprint.pformat(env))
@@ -91,6 +96,8 @@ def run ():
 	parser.add_argument('--test', action = 'store_true', help = "run test using config file")
 	parser.add_argument('--test-config', default = 'config.json', type = str, help = "config file for running test")
 	parser.add_argument('--loglevel', default = 'DEBUG', type = str, help = "logging level")
+	parser.add_argument('--worker-id', default = 1, type = int, help = "worker id (for data generation)")
+	parser.add_argument('--worker-num', default = 1, type = int, help = "total worker number (for data generation)")
 	args = parser.parse_args()
 
 	logging.basicConfig(level = getattr(logging, args.loglevel))
@@ -114,7 +121,15 @@ def run ():
 
 	log.info("Serving on %s:%s..." % (args.host, args.port))
 
-	server = gevent.pywsgi.WSGIServer((args.host, args.port), handle, spawn = gevent.pool.Pool(args.pool_size), handler_class = QuietWSGIHandler, backlog = args.backlog)
+	env = dict(
+		id_gen = itertools.count(args.worker_id, args.worker_num),
+	)
+	server = gevent.pywsgi.WSGIServer((args.host, args.port), handle,
+		spawn = gevent.pool.Pool(args.pool_size),
+		handler_class = QuietWSGIHandler,
+		backlog = args.backlog,
+		environ = env,
+	)
 	try:
 		server.serve_forever()
 	except KeyboardInterrupt:
